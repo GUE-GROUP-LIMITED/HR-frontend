@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Dialog } from '@/components/ui/dialog'
 import { exportToCSV, formatDateTime, timeAgo } from '@/lib/utils'
+import { MessageResponse } from '@/types'
 
 export const ResponseMonitoringPage: React.FC = () => {
   const queryClient = useQueryClient()
@@ -292,7 +293,7 @@ export const ResponseMonitoringPage: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="p-5 space-y-4">
-          {responsesFeed?.data?.map((resp) => (
+          {responsesFeed?.data?.map((resp: MessageResponse) => (
             <div
               key={resp.id}
               className="p-3.5 rounded-2xl border border-slate-200/70 bg-slate-50/50 flex items-start justify-between gap-4"

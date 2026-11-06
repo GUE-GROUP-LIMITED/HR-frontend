@@ -447,7 +447,7 @@ export const InboxPage: React.FC = () => {
         )}
 
         {/* Footer pagination */}
-        {meta && meta.totalPages > 1 && (
+        {meta && (meta.totalPages ?? 1) > 1 && (
           <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
             <span>
               Showing {messages.length} of {meta.total} records
@@ -462,12 +462,12 @@ export const InboxPage: React.FC = () => {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="font-bold text-slate-700">
-                Page {page} of {meta.totalPages}
+                Page {page} of {meta.totalPages ?? 1}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page >= meta.totalPages}
+                disabled={page >= (meta.totalPages ?? 1)}
                 onClick={() => setPage((p) => p + 1)}
               >
                 <ChevronRight className="h-4 w-4" />
