@@ -77,3 +77,4 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data }) 
     </div>
   )
 }
+

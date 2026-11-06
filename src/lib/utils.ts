@@ -143,3 +143,4 @@ export function getInitials(name: string): string {
     .map(p => p[0].toUpperCase())
     .join('')
 }
+

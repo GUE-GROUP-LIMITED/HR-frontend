@@ -321,3 +321,4 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
     </Dialog>
   )
 }
+

@@ -182,3 +182,4 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenSimulator }) => {
     </header>
   )
 }
+

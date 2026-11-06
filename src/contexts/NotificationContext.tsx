@@ -64,3 +64,4 @@ export const useNotifications = () => {
   if (!ctx) throw new Error('useNotifications must be used within NotificationProvider')
   return ctx
 }
+

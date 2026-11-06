@@ -357,3 +357,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
     </aside>
   )
 }
+

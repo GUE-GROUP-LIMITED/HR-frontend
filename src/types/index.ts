@@ -162,3 +162,4 @@ export interface DashboardOverviewStats {
   counts_by_category: { category_id: string; category_name: string; count: number }[]
   activity_timeline: { date: string; incoming: number; resolved: number }[]
 }
+

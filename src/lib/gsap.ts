@@ -55,3 +55,4 @@ export function animateCounter(target: HTMLElement, endValue: number, duration: 
     },
   })
 }
+

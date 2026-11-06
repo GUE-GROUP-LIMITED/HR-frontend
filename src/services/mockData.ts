@@ -407,3 +407,4 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     created_at: '2026-11-06T09:30:00Z',
   },
 ]
+

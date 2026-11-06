@@ -92,3 +92,4 @@ export const SlaGauge: React.FC<SlaGaugeProps> = ({ score = 94.2, lastMonthScore
     </div>
   )
 }
+

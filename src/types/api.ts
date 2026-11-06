@@ -86,3 +86,4 @@ export interface BulkAssignPayload {
   message_ids: string[]
   assigned_to: string
 }
+
