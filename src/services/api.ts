@@ -73,7 +73,7 @@ export const api = {
       return res.data
     },
     updateCategory: async (messageId: string, categoryId: string, actor: { id: string; name: string }) => {
-      if (USE_MOCK) return MockApiService.updateCategory(messageId, categoryId, actor)
+      if (USE_MOCK) return MockApiService.updateMessageCategory(messageId, categoryId, actor)
       const res = await apiClient.patch(`/messages/${messageId}/category`, { category_id: categoryId })
       return res.data
     },

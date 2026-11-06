@@ -558,7 +558,7 @@ export class MockApiService {
     return msg
   }
 
-  static async updateCategory(
+  static async updateMessageCategory(
     messageId: string,
     categoryId: string,
     actor: { id: string; name: string }
