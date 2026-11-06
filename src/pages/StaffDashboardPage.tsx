@@ -23,6 +23,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { MessageDetailDrawer } from '@/components/inbox/MessageDetailDrawer'
 import { useStaggerFade } from '@/lib/gsap'
 import { getStatusConfig, timeAgo, formatDateTime } from '@/lib/utils'
+import { Message, MessageResponse } from '@/types'
 
 export const StaffDashboardPage: React.FC = () => {
   const { currentUser, role } = useAuth()
@@ -40,7 +41,7 @@ export const StaffDashboardPage: React.FC = () => {
   const myMessages = dashboardData?.messages || []
   const myResponses = dashboardData?.responses || []
 
-  const filteredMessages = myMessages.filter((m) => {
+  const filteredMessages = myMessages.filter((m: Message) => {
     if (activeTab === 'all') return true
     return m.status === activeTab
   })
@@ -180,7 +181,7 @@ export const StaffDashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {filteredMessages.map((msg) => {
+                {filteredMessages.map((msg: Message) => {
                   const statusConfig = getStatusConfig(msg.status)
                   return (
                     <div
@@ -245,7 +246,7 @@ export const StaffDashboardPage: React.FC = () => {
             {myResponses.length === 0 ? (
               <p className="text-xs text-slate-400 py-6 text-center">No replies sent yet</p>
             ) : (
-              myResponses.map((r) => (
+              myResponses.map((r: MessageResponse) => (
                 <div
                   key={r.id}
                   className="p-3 rounded-2xl bg-slate-50 border border-slate-200/60 text-xs space-y-1.5"
