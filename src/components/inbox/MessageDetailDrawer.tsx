@@ -455,7 +455,7 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
             {activeTab === 'history' && (
               <div className="p-5">
                 <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                  {events.map((evt) => (
+                  {events.map((evt: MessageEvent) => (
                     <div key={evt.id} className="relative text-xs">
                       <span className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-white" />
                       <div className="flex items-center justify-between">
