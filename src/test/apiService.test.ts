@@ -45,7 +45,7 @@ describe('GUE HR API & Service Layer', () => {
 
       // Check event was recorded
       const detail = await api.messages.get('msg_103')
-      const assignEvent = detail.events.find((e) => e.action === 'assigned')
+      const assignEvent = detail.events.find((e:any) => e.action === 'assigned')
       expect(assignEvent).toBeDefined()
     })
 
