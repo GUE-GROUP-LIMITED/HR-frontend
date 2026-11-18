@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Plus,
+  Send,
 } from 'lucide-react'
 import { api } from '@/services/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,13 +27,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
+import { Dialog } from '@/components/ui/dialog'
 import { MessageDetailDrawer } from '@/components/inbox/MessageDetailDrawer'
 import { MessageStatus, Message } from '@/types'
 import { getStatusConfig, timeAgo, formatDate } from '@/lib/utils'
+import { GROUP_ENTITIES } from '@/services/operationsData'
+
+const requestDestinations = GROUP_ENTITIES.filter((entity) => entity.type !== 'holding')
 
 export const InboxPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { currentUser, role } = useAuth()
+  const { currentUser } = useAuth()
   const queryClient = useQueryClient()
 
   // Filters state
@@ -41,8 +47,23 @@ export const InboxPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all')
+  const [selectedSource, setSelectedSource] = useState<'all' | 'public' | 'internal' | 'external'>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [page, setPage] = useState<number>(1)
+  const [internalRequestOpen, setInternalRequestOpen] = useState(false)
+  const [externalRequestOpen, setExternalRequestOpen] = useState(false)
+  const [externalOrganization, setExternalOrganization] = useState('UBA')
+  const [customExternalOrganization, setCustomExternalOrganization] = useState('')
+  const [externalContactName, setExternalContactName] = useState('')
+  const [externalContactEmail, setExternalContactEmail] = useState('')
+  const [externalRequestCategoryId, setExternalRequestCategoryId] = useState('')
+  const [externalRequestSubject, setExternalRequestSubject] = useState('')
+  const [externalRequestMessage, setExternalRequestMessage] = useState('')
+  const [requestCategoryId, setRequestCategoryId] = useState('')
+  const [requestTargetUnitId, setRequestTargetUnitId] = useState('')
+  const [requestAssigneeId, setRequestAssigneeId] = useState('')
+  const [requestSubject, setRequestSubject] = useState('')
+  const [requestMessage, setRequestMessage] = useState('')
 
   // Drawer selection
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
@@ -70,6 +91,8 @@ export const InboxPage: React.FC = () => {
         status: selectedStatus,
         category_id: selectedCategory,
         assigned_to: selectedAssignee,
+        source_type: selectedSource,
+        viewer_id: currentUser.id,
         q: searchQuery,
         page,
       },
@@ -80,10 +103,11 @@ export const InboxPage: React.FC = () => {
         status: selectedStatus as MessageStatus | 'all',
         category_id: selectedCategory,
         assigned_to: selectedAssignee,
+        source_type: selectedSource === 'all' ? undefined : selectedSource,
         q: searchQuery,
         page,
         limit: 15,
-      }),
+      }, currentUser),
   })
 
   const { data: websites } = useQuery({
@@ -100,6 +124,116 @@ export const InboxPage: React.FC = () => {
     queryKey: ['staff'],
     queryFn: () => api.staff.list({ is_active: true }),
   })
+
+  const internalCategories = (categories ?? []).filter(
+    (category) => category.audience !== 'public'
+  )
+  const requestingUnit =
+    GROUP_ENTITIES.find((entity) => entity.id === currentUser.unit_id) ??
+    GROUP_ENTITIES.find((entity) => entity.id === currentUser.company_id)
+  const unitAssignees = (staffList ?? []).filter(
+    (staff) =>
+      staff.company_id === requestTargetUnitId ||
+      staff.unit_id === requestTargetUnitId ||
+      staff.access_scopes?.some(
+        (scope) =>
+          scope.companyId === requestTargetUnitId ||
+          scope.unitId === requestTargetUnitId ||
+          scope.companyId === '*'
+      )
+  )
+  const internalAssignees = unitAssignees
+  const getRequestDefaultAssignee = (targetUnitId: string, categoryId: string) => {
+    const category = internalCategories.find((item) => item.id === categoryId)
+    const eligibleAssignees = (staffList ?? []).filter(
+      (staff) =>
+        staff.company_id === targetUnitId ||
+        staff.unit_id === targetUnitId ||
+        staff.access_scopes?.some(
+          (scope) =>
+            scope.companyId === targetUnitId ||
+            scope.unitId === targetUnitId ||
+            scope.companyId === '*'
+        )
+    )
+    return eligibleAssignees.find(
+      (staff) => staff.id === category?.default_assignee_id
+    )?.id ?? ''
+  }
+
+  const internalRequestMutation = useMutation({
+    mutationFn: () =>
+      api.messages.createInternalRequest(
+        {
+          category_id: requestCategoryId,
+          target_unit_id: requestTargetUnitId,
+          assignee_id: requestAssigneeId,
+          subject: requestSubject.trim(),
+          message: requestMessage.trim(),
+        },
+        currentUser
+      ),
+    onSuccess: () => {
+      setInternalRequestOpen(false)
+      setRequestSubject('')
+      setRequestMessage('')
+      queryClient.invalidateQueries({ queryKey: ['messages'] })
+      queryClient.invalidateQueries({ queryKey: ['monitoring'] })
+    },
+  })
+
+  const externalRequestMutation = useMutation({
+    mutationFn: () =>
+      api.messages.createExternalRequest(
+        {
+          category_id: externalRequestCategoryId,
+          organization_name: externalOrganization === 'other'
+            ? customExternalOrganization.trim()
+            : externalOrganization,
+          contact_name: externalContactName.trim() || undefined,
+          contact_email: externalContactEmail.trim() || undefined,
+          subject: externalRequestSubject.trim(),
+          message: externalRequestMessage.trim(),
+        },
+        currentUser
+      ),
+    onSuccess: () => {
+      setExternalRequestOpen(false)
+      setCustomExternalOrganization('')
+      setExternalContactName('')
+      setExternalContactEmail('')
+      setExternalRequestSubject('')
+      setExternalRequestMessage('')
+      queryClient.invalidateQueries({ queryKey: ['messages'] })
+    },
+  })
+
+  const openInternalRequest = () => {
+    internalRequestMutation.reset()
+    const defaultDestination =
+      [currentUser.unit_id, currentUser.company_id].find((id) =>
+        requestDestinations.some((entity) => entity.id === id)
+      ) ?? requestDestinations[0]?.id ?? ''
+    const defaultCategory = internalCategories[0]?.id ?? ''
+    setRequestTargetUnitId(defaultDestination)
+    setRequestCategoryId(defaultCategory)
+    setRequestAssigneeId(getRequestDefaultAssignee(defaultDestination, defaultCategory))
+    setInternalRequestOpen(true)
+  }
+
+  const openExternalRequest = () => {
+    externalRequestMutation.reset()
+    setExternalOrganization('UBA')
+    setCustomExternalOrganization('')
+    setExternalContactName('')
+    setExternalContactEmail('')
+    setExternalRequestCategoryId(
+      internalCategories.find((category) => category.id === 'c18')?.id ??
+      internalCategories[0]?.id ??
+      ''
+    )
+    setExternalRequestOpen(true)
+  }
 
   // Bulk assign mutation
   const bulkAssignMutation = useMutation({
@@ -141,7 +275,7 @@ export const InboxPage: React.FC = () => {
             Unified Contact Inbox
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Incoming contact form messages across all 4 registered web properties.
+            Public inquiries, internal requests, and external follow-up tracking across the group.
           </p>
         </div>
 
@@ -149,6 +283,23 @@ export const InboxPage: React.FC = () => {
           <Badge variant="outline" className="text-xs px-3 py-1 font-semibold">
             {meta?.total || messages.length} Total Messages
           </Badge>
+          <Button
+            onClick={openInternalRequest}
+            disabled={!internalCategories.length || !staffList?.length}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            New Internal Request
+          </Button>
+          <Button
+            onClick={openExternalRequest}
+            disabled={!internalCategories.length}
+            variant="outline"
+            className="gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            New External Request
+          </Button>
         </div>
       </div>
 
@@ -159,11 +310,28 @@ export const InboxPage: React.FC = () => {
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search by sender, email, subject, or message text..."
+              placeholder="Search sender, organization, subject, or message..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 text-xs h-10 rounded-2xl bg-slate-50 border-slate-200"
             />
+          </div>
+
+          <div className="w-full md:w-40">
+            <select
+              aria-label="Message source"
+              value={selectedSource}
+              onChange={(e) => {
+                setSelectedSource(e.target.value as 'all' | 'public' | 'internal' | 'external')
+                setPage(1)
+              }}
+              className="w-full h-10 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="all">All Sources</option>
+              <option value="public">Public Website</option>
+              <option value="internal">Internal Requests</option>
+              <option value="external">External Requests</option>
+            </select>
           </div>
 
           {/* Website selector */}
@@ -176,7 +344,7 @@ export const InboxPage: React.FC = () => {
               }}
               className="w-full h-10 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
             >
-              <option value="all">All Websites (4)</option>
+              <option value="all">All Websites ({websites?.length ?? 0})</option>
               {websites?.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
@@ -318,7 +486,7 @@ export const InboxPage: React.FC = () => {
                       )}
                     </button>
                   </th>
-                  <th className="py-3 px-4">Origin Website</th>
+                  <th className="py-3 px-4">Source / Destination</th>
                   <th className="py-3 px-4">Sender & Subject</th>
                   <th className="py-3 px-4">Category</th>
                   <th className="py-3 px-4">Status</th>
@@ -368,6 +536,18 @@ export const InboxPage: React.FC = () => {
                         >
                           {msg.website.name}
                         </span>
+                        {msg.source_type === 'internal' && (
+                          <span className="mt-1 block text-[10px] text-slate-500">
+                            {msg.source_unit_name || 'Staff'} to {msg.target_unit_name || 'Destination unit'}
+                          </span>
+                        )}
+                        {msg.source_type === 'external' && (
+                          <span className="mt-1 block text-[10px] text-slate-500">
+                            {msg.source_unit_name || 'Staff'}
+                            {msg.source_work_location ? ` · ${msg.source_work_location}` : ''}
+                            {' to '}{msg.external_organization || 'External organization'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Sender & Subject */}
@@ -476,6 +656,304 @@ export const InboxPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={internalRequestOpen}
+        onClose={() => setInternalRequestOpen(false)}
+        title="New Internal Request"
+        description="Send a request from your unit to a named responder in another company, branch, or unit."
+        maxWidth="xl"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            internalRequestMutation.mutate()
+          }}
+        >
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Requesting unit: <span className="font-semibold">{requestingUnit?.name || 'GUE Group'}</span>
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Destination company, branch, or unit *
+              </label>
+              <select
+                required
+                value={requestTargetUnitId}
+                onChange={(event) => {
+                  const targetUnitId = event.target.value
+                  setRequestTargetUnitId(targetUnitId)
+                  setRequestAssigneeId(
+                    getRequestDefaultAssignee(targetUnitId, requestCategoryId)
+                  )
+                }}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+              >
+                {requestDestinations.map((entity) => (
+                  <option key={entity.id} value={entity.id}>{entity.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Topic *
+              </label>
+              <select
+                required
+                value={requestCategoryId}
+                onChange={(event) => {
+                  setRequestCategoryId(event.target.value)
+                  setRequestAssigneeId(
+                    getRequestDefaultAssignee(requestTargetUnitId, event.target.value)
+                  )
+                }}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+              >
+                {internalCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}{category.default_assignee_name
+                      ? ` · Default: ${category.default_assignee_name}`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Assign to *
+            </label>
+            <select
+              required
+              value={requestAssigneeId}
+              onChange={(event) => setRequestAssigneeId(event.target.value)}
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">Select a staff member...</option>
+              {internalAssignees.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.name} · {staff.job_title || staff.department || staff.role}
+                </option>
+              ))}
+            </select>
+            {internalAssignees.length === 0 && (
+              <p className="mt-1 text-[11px] text-rose-600">
+                No active responder is available for this destination and topic.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Subject *
+            </label>
+            <Input
+              required
+              value={requestSubject}
+              onChange={(event) => setRequestSubject(event.target.value)}
+              placeholder="Briefly describe the request"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Request details *
+            </label>
+            <textarea
+              required
+              rows={5}
+              value={requestMessage}
+              onChange={(event) => setRequestMessage(event.target.value)}
+              placeholder="Include the context and action needed."
+              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          {internalRequestMutation.isError && (
+            <p role="alert" className="text-xs text-rose-600">
+              {internalRequestMutation.error instanceof Error
+                ? internalRequestMutation.error.message
+                : 'Could not submit the internal request.'}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setInternalRequestOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                internalRequestMutation.isPending ||
+                !requestCategoryId ||
+                !requestTargetUnitId ||
+                !requestAssigneeId
+              }
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              {internalRequestMutation.isPending ? 'Sending...' : 'Send Request'}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={externalRequestOpen}
+        onClose={() => setExternalRequestOpen(false)}
+        title="New External Organization Request"
+        description="Create a follow-up record for an organization such as UBA. This demo does not send an email or contact the organization."
+        maxWidth="xl"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            externalRequestMutation.mutate()
+          }}
+        >
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Tracking only: record that the organization needs follow-up, then update the status and internal notes after contact is made outside this app. Your scoped managers can view this record.
+          </div>
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Requesting unit: <span className="font-semibold">{requestingUnit?.name || 'GUE Group'}</span>
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                External organization *
+              </label>
+              <select
+                required
+                value={externalOrganization}
+                onChange={(event) => setExternalOrganization(event.target.value)}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="UBA">UBA</option>
+                <option value="other">Other organization</option>
+              </select>
+            </div>
+            {externalOrganization === 'other' && (
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Organization name *
+                </label>
+                <Input
+                  required
+                  value={customExternalOrganization}
+                  onChange={(event) => setCustomExternalOrganization(event.target.value)}
+                  placeholder="Enter organization name"
+                />
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Topic *
+              </label>
+              <select
+                required
+                value={externalRequestCategoryId}
+                onChange={(event) => setExternalRequestCategoryId(event.target.value)}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+              >
+                {internalCategories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Contact name (optional)
+              </label>
+              <Input
+                value={externalContactName}
+                onChange={(event) => setExternalContactName(event.target.value)}
+                placeholder="Organization contact"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Contact email (optional)
+              </label>
+              <Input
+                type="email"
+                value={externalContactEmail}
+                onChange={(event) => setExternalContactEmail(event.target.value)}
+                placeholder="contact@organization.com"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Subject *
+            </label>
+            <Input
+              required
+              value={externalRequestSubject}
+              onChange={(event) => setExternalRequestSubject(event.target.value)}
+              placeholder="For example: UBA agent terminal failure in Wannune"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Follow-up details *
+            </label>
+            <textarea
+              required
+              rows={5}
+              value={externalRequestMessage}
+              onChange={(event) => setExternalRequestMessage(event.target.value)}
+              placeholder="Describe the issue, branch/location, and follow-up needed. Avoid including BVN, NIN, PIN, or other sensitive customer data."
+              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          {externalRequestMutation.isError && (
+            <p role="alert" className="text-xs text-rose-600">
+              {externalRequestMutation.error instanceof Error
+                ? externalRequestMutation.error.message
+                : 'Could not create the external request record.'}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setExternalRequestOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                externalRequestMutation.isPending ||
+                !externalRequestCategoryId ||
+                (externalOrganization === 'other' && !customExternalOrganization.trim())
+              }
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {externalRequestMutation.isPending ? 'Saving...' : 'Create Tracking Record'}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
 
       {/* Message Detail Drawer */}
       <MessageDetailDrawer

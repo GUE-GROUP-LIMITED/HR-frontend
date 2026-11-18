@@ -35,7 +35,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenSimulator }) => {
         <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
         <span className="text-xs font-semibold text-slate-400">GUE Enterprise System</span>
         <span className="text-slate-300">/</span>
-        <h1 className="text-sm font-bold text-slate-800">HR Contact Hub</h1>
+        <h1 className="text-sm font-bold text-slate-800">Group Operations & Contact Hub</h1>
       </div>
 
       {/* Right controls */}
@@ -55,7 +55,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenSimulator }) => {
           </button>
 
           {showRoleMenu && (
-            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200 shadow-floating p-2 z-50">
+            <div className="absolute right-0 mt-2 w-72 max-h-[75vh] overflow-y-auto rounded-2xl bg-white border border-slate-200 shadow-floating p-2 z-50">
               <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Switch Test Persona & Role
               </p>
@@ -76,7 +76,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenSimulator }) => {
                     <Avatar src={u.avatar} fallback={u.name} size="sm" />
                     <div className="overflow-hidden flex-1">
                       <p className="truncate font-semibold">{u.name}</p>
-                      <p className="text-[10px] text-slate-500 uppercase">{u.role.replace('_', ' ')}</p>
+                      <p className="text-[10px] text-slate-500">
+                        {u.job_title || u.role.replace('_', ' ')}
+                      </p>
+                      {u.additional_roles?.map((additionalRole) => (
+                        <p key={additionalRole} className="truncate text-[10px] text-emerald-700">
+                          Additional demo role: {additionalRole}
+                        </p>
+                      ))}
                     </div>
                   </button>
                 ))}

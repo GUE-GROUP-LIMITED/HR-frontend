@@ -36,8 +36,14 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
         if (sites.length && !selectedWebsiteId) setSelectedWebsiteId(sites[0].id)
       })
       api.categories.list().then((cats) => {
-        setCategories(cats)
-        if (cats.length && !selectedCategoryId) setSelectedCategoryId(cats[0].id)
+        const publicCategories = cats.filter((category) => category.audience !== 'internal')
+        setCategories(publicCategories)
+        if (
+          publicCategories.length &&
+          !publicCategories.some((category) => category.id === selectedCategoryId)
+        ) {
+          setSelectedCategoryId(publicCategories[0].id)
+        }
       })
     }
   }, [open])
@@ -47,29 +53,29 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
   // Pre-fill templates for fast testing
   const applyTemplate = (type: 'career' | 'business' | 'tech' | 'billing') => {
     if (type === 'career') {
-      setSelectedWebsiteId('w3')
+      setSelectedWebsiteId('w4')
       setSelectedCategoryId('c3')
       setName('Maya Angelou')
       setEmail('maya.angelou@creative-talent.org')
       setPhone('+1 (312) 555-8821')
-      setSubject('Senior UX Designer Portfolio & Application')
-      setMessage('Hello HR Team, I recently applied for the Senior UX Designer role on your careers portal. Here is a link to my case studies and design system documentation.')
+      setSubject('Skills Training Instructor Application')
+      setMessage('Hello GUE Skills Training Centre, I am interested in applying to support your training programmes. Please let me know about current instructor opportunities and the application process.')
     } else if (type === 'business') {
-      setSelectedWebsiteId('w2')
+      setSelectedWebsiteId('w7')
       setSelectedCategoryId('c2')
       setName('Kenji Tanaka')
       setEmail('k.tanaka@tokyo-ventures.jp')
       setPhone('+81 3 5555 0142')
-      setSubject('Cross-Border Distribution Partnership')
-      setMessage('Dear GUE Commerce team, We represent 45 retail concept outlets in Japan and wish to discuss distributing GUE curated hardware lines.')
+      setSubject('Industrial Park Development Partnership')
+      setMessage('Dear GUE Industrial Parks team, We are interested in discussing a development and operating partnership for industrial facilities in Japan.')
     } else if (type === 'tech') {
-      setSelectedWebsiteId('w4')
+      setSelectedWebsiteId('w2')
       setSelectedCategoryId('c4')
       setName('Jordan Lee')
       setEmail('jordan@stackstream.dev')
       setPhone('+1 (650) 555-9081')
       setSubject('REST API v1 Rate Limit Inquiries on High-Concurrency Clusters')
-      setMessage('We are noticing burst thresholds being throttled at 1,000 req/min instead of 5,000 req/min on our enterprise dev tier.')
+      setMessage('We are noticing burst thresholds being throttled at 1,000 req/min instead of 5,000 req/min on our enterprise cybersecurity platform.')
     } else if (type === 'billing') {
       setSelectedWebsiteId('w1')
       setSelectedCategoryId('c5')

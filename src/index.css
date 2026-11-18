@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  body:has(.pos-receipt-print) * {
+    visibility: hidden !important;
+  }
+
+  .pos-receipt-print,
+  .pos-receipt-print * {
+    visibility: visible !important;
+  }
+
+  .pos-receipt-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    max-width: 80mm;
+  }
+}
+
 @layer base {
   * {
     @apply border-surface-border;

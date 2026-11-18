@@ -41,9 +41,9 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
   const [newNote, setNewNote] = useState('')
   const [assigneeId, setAssigneeId] = useState('')
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['message', messageId],
-    queryFn: () => (messageId ? api.messages.get(messageId) : null),
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['message', messageId, currentUser.id],
+    queryFn: () => (messageId ? api.messages.get(messageId, currentUser) : null),
     enabled: !!messageId,
   })
 
@@ -162,7 +162,9 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
                   borderColor: message?.website.color ? `${message.website.color}30` : undefined,
                 }}
               >
-                {message?.website.name}
+                {message?.source_type === 'external'
+                  ? `External request: ${message.external_organization || 'Organization'}`
+                  : message?.website.name}
               </span>
               {statusConfig && (
                 <span
@@ -191,9 +193,16 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
         </div>
 
         {/* Content Body */}
-        {isLoading || !message ? (
+        {isLoading ? (
           <div className="flex-1 flex items-center justify-center p-8">
             <RefreshCw className="h-6 w-6 text-emerald-600 animate-spin" />
+          </div>
+        ) : isError || !message ? (
+          <div role="alert" className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <p className="text-sm font-semibold text-slate-700">
+              {error instanceof Error ? error.message : 'This message could not be loaded.'}
+            </p>
+            <Button variant="outline" onClick={onClose}>Close</Button>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
@@ -284,10 +293,79 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
               </div>
             </div>
 
+            {message.source_type === 'internal' && (
+              <div className="px-5 py-4 border-b border-slate-100 bg-emerald-50/40">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 mb-2">
+                  Internal request route
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="block text-slate-400">From unit</span>
+                    <span className="font-semibold text-slate-800">
+                      {message.source_unit_name || 'Staff'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Destination</span>
+                    <span className="font-semibold text-slate-800">
+                      {message.target_unit_name || 'Not specified'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Topic</span>
+                    <span className="font-semibold text-slate-800">{message.category.name}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {message.source_type === 'external' && (
+              <div className="px-5 py-4 border-b border-amber-100 bg-amber-50/50">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800 mb-2">
+                  External follow-up tracking
+                </p>
+                <p className="text-xs text-amber-900 mb-3">
+                  This is a tracking record only. No message has been sent to the organization.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="block text-slate-400">Requesting unit</span>
+                    <span className="font-semibold text-slate-800">
+                      {message.source_unit_name || 'Staff'}
+                      {message.source_work_location ? ` · ${message.source_work_location}` : ''}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Organization</span>
+                    <span className="font-semibold text-slate-800">
+                      {message.external_organization || 'Not specified'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">Topic</span>
+                    <span className="font-semibold text-slate-800">{message.category.name}</span>
+                  </div>
+                  {(message.external_contact_name || message.external_contact_email) && (
+                    <div className="sm:col-span-3">
+                      <span className="block text-slate-400">Organization contact</span>
+                      <span className="font-semibold text-slate-800">
+                        {[message.external_contact_name, message.external_contact_email]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Message Original Body */}
             <div className="p-5 bg-white border-b border-slate-100">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                Inquiry Text
+                {message.source_type === 'public'
+                  ? 'Inquiry Text'
+                  : message.source_type === 'external'
+                    ? 'External Follow-up Details'
+                    : 'Request Details'}
               </p>
               <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70 text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-sans">
                 {message.body}
@@ -338,7 +416,9 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
               <div className="p-5 space-y-4">
                 {responses.length === 0 ? (
                   <div className="py-6 text-center text-xs text-slate-400">
-                    No responses sent yet. Compose a reply below.
+                    {message.source_type === 'external'
+                      ? 'External communication is not sent from this demo. Use Internal Notes to record follow-up.'
+                      : 'No responses sent yet. Compose a reply below.'}
                   </div>
                 ) : (
                   responses.map((resp: MessageResponse) => (
@@ -371,41 +451,43 @@ export const MessageDetailDrawer: React.FC<MessageDetailDrawerProps> = ({ messag
                   ))
                 )}
 
-                {/* Reply Composer */}
-                <div className="pt-2 border-t border-slate-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800">Compose Official Response</span>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sendToSender}
-                        onChange={(e) => setSendToSender(e.target.checked)}
-                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <span>Email directly to {message.sender_email}</span>
-                    </label>
-                  </div>
+                {/* External messages are tracked here; email delivery is not integrated. */}
+                {message.source_type !== 'external' && (
+                  <div className="pt-2 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">Compose Official Response</span>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={sendToSender}
+                          onChange={(e) => setSendToSender(e.target.checked)}
+                          className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span>Email directly to {message.sender_email}</span>
+                      </label>
+                    </div>
 
-                  <textarea
-                    rows={4}
-                    value={replyBody}
-                    onChange={(e) => setReplyBody(e.target.value)}
-                    placeholder="Write your response message..."
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 placeholder:text-slate-400"
-                  />
+                    <textarea
+                      rows={4}
+                      value={replyBody}
+                      onChange={(e) => setReplyBody(e.target.value)}
+                      placeholder="Write your response message..."
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-3 text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 placeholder:text-slate-400"
+                    />
 
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      disabled={!replyBody.trim() || replyMutation.isPending}
-                      onClick={() => replyMutation.mutate(replyBody)}
-                      className="gap-1.5"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      <span>{replyMutation.isPending ? 'Sending...' : 'Send Reply'}</span>
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        disabled={!replyBody.trim() || replyMutation.isPending}
+                        onClick={() => replyMutation.mutate(replyBody)}
+                        className="gap-1.5"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        <span>{replyMutation.isPending ? 'Sending...' : 'Send Reply'}</span>
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 

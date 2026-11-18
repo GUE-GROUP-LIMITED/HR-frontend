@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog } from '@/components/ui/dialog'
-import { Category } from '@/types'
+import { Category, CategoryAudience } from '@/types'
 
 export const AdminCategoriesPage: React.FC = () => {
   const queryClient = useQueryClient()
@@ -24,6 +24,7 @@ export const AdminCategoriesPage: React.FC = () => {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [defaultAssigneeId, setDefaultAssigneeId] = useState('')
+  const [audience, setAudience] = useState<CategoryAudience>('both')
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ['categories'],
@@ -42,6 +43,7 @@ export const AdminCategoriesPage: React.FC = () => {
         name,
         description,
         default_assignee_id: defaultAssigneeId || undefined,
+        audience,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
@@ -49,6 +51,7 @@ export const AdminCategoriesPage: React.FC = () => {
       setName('')
       setDescription('')
       setDefaultAssigneeId('')
+      setAudience('both')
     },
   })
 
@@ -107,6 +110,9 @@ export const AdminCategoriesPage: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">{cat.name}</h4>
                   <p className="text-xs text-slate-500 mt-0.5">{cat.description || 'Topic category'}</p>
+                  <Badge variant="outline" className="mt-1 text-[9px] uppercase">
+                    {cat.audience ?? 'both'}
+                  </Badge>
                 </div>
               </div>
 
@@ -191,6 +197,21 @@ export const AdminCategoriesPage: React.FC = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Available to
+            </label>
+            <select
+              value={audience}
+              onChange={(e) => setAudience(e.target.value as CategoryAudience)}
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="both">Public contacts and internal staff</option>
+              <option value="public">Public contacts only</option>
+              <option value="internal">Internal staff only</option>
+            </select>
           </div>
 
           <div>

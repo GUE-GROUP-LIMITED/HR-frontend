@@ -63,7 +63,7 @@ export const DashboardPage: React.FC = () => {
     {
       id: 't1',
       title: 'Triage Overdue Inquiries',
-      subtitle: 'Review message #msg_101 from GUE Commerce (unanswered > 24h)',
+      subtitle: 'Review message #msg_101 from GUE Group Limited (unanswered > 24h)',
       tag: 'Urgent SLA',
       completed: false,
     },
@@ -128,7 +128,7 @@ export const DashboardPage: React.FC = () => {
             Welcome Back, {currentUser.name.split(' ')[0]}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Centralized operations across GUE's four websites & staff responders.
+            Centralized operations across GUE Group's company websites and staff responders.
           </p>
         </div>
 

@@ -1,4 +1,36 @@
-export type UserRole = 'super_admin' | 'hr' | 'staff'
+export type UserRole =
+  | 'super_admin'
+  | 'group_head'
+  | 'subsidiary_head'
+  | 'unit_head'
+  | 'operations_manager'
+  | 'company_manager'
+  | 'branch_manager'
+  | 'assistant_manager'
+  | 'payroll_viewer'
+  | 'hr'
+  | 'staff'
+
+export type UserPermission =
+  | 'view_staff'
+  | 'manage_staff'
+  | 'view_operations'
+  | 'manage_operations'
+  | 'view_payroll'
+  | 'prepare_payroll'
+  | 'approve_unit_payroll'
+  | 'approve_entity_payroll'
+  | 'approve_group_payroll'
+  | 'create_payroll_period'
+  | 'export_payroll'
+  | 'view_monitoring'
+
+export interface UserAccessScope {
+  companyId: string
+  unitId?: string
+  workLocations?: string[]
+  permissions?: UserPermission[]
+}
 
 export type MessageStatus = 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'spam'
 
@@ -7,7 +39,18 @@ export interface User {
   name: string
   email: string
   role: UserRole
+  permissions?: UserPermission[]
+  access_scopes?: UserAccessScope[]
+  job_title?: string
+  additional_roles?: string[]
+  company_id?: string
+  unit_id?: string
+  work_location?: string
   department?: string
+  date_of_birth?: string
+  hire_date?: string
+  promotion_history?: StaffPromotion[]
+  terminated_at?: string
   phone?: string
   avatar?: string
   is_active: boolean
@@ -15,8 +58,18 @@ export interface User {
   created_at: string
 }
 
+export interface StaffPromotion {
+  id: string
+  previous_job_title?: string
+  new_job_title: string
+  effective_date: string
+  reason?: string
+  recorded_by: string
+}
+
 export interface Website {
   id: string
+  company_id?: string
   name: string
   domain: string
   site_key: string
@@ -26,11 +79,14 @@ export interface Website {
   created_at: string
 }
 
+export type CategoryAudience = 'public' | 'internal' | 'both'
+
 export interface Category {
   id: string
   name: string
   slug: string
   color?: string
+  audience?: CategoryAudience
   default_assignee_id?: string | null
   default_assignee_name?: string
   description?: string
@@ -89,6 +145,17 @@ export interface Message {
     name: string
     color?: string
   }
+  source_type?: 'public' | 'internal' | 'external'
+  requester_id?: string
+  source_company_id?: string
+  source_work_location?: string
+  source_unit_id?: string
+  source_unit_name?: string
+  target_unit_id?: string
+  target_unit_name?: string
+  external_organization?: string
+  external_contact_name?: string
+  external_contact_email?: string
   status: MessageStatus
   assigned_to?: {
     id: string

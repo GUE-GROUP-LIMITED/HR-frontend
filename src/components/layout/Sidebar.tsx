@@ -1,5 +1,6 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
   Inbox,
@@ -16,12 +17,21 @@ import {
   Send,
   Building2,
   SlidersHorizontal,
+  Briefcase,
+  Wallet,
+  CalendarDays,
+  ClipboardList,
+  Store,
+  Truck,
+  ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { api } from '@/services/api'
+import { hasPermission } from '@/lib/access'
 
 interface SidebarProps {
   onOpenSimulator: () => void
@@ -31,6 +41,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
   const { currentUser, role, logout } = useAuth()
   const { unreadCount } = useNotifications()
   const navigate = useNavigate()
+  const canAccessPayroll = hasPermission(currentUser, 'view_payroll')
+  const canAccessStaff = hasPermission(currentUser, 'view_staff')
+  const canAccessOperations = hasPermission(currentUser, 'view_operations')
+  const canAccessMonitoring = hasPermission(currentUser, 'view_monitoring')
+  const { data: posDashboard } = useQuery({
+    queryKey: ['pos-dashboard', currentUser.id],
+    queryFn: () => api.pos.dashboard(currentUser),
+  })
+  const canAccessPos = (posDashboard?.outlets.length ?? 0) > 0
+  const { data: logisticsDashboard } = useQuery({
+    queryKey: ['logistics-dashboard', currentUser.id],
+    queryFn: () => api.logistics.dashboard(currentUser),
+  })
+  const canAccessLogistics = (logisticsDashboard?.outlets.length ?? 0) > 0
+  const { data: webOrdersDashboard } = useQuery({
+    queryKey: ['web-orders-dashboard', currentUser.id],
+    queryFn: () => api.webOrders.dashboard(currentUser),
+  })
+  const canAccessWebOrders = (webOrdersDashboard?.outlets.length ?? 0) > 0
+  const { data: websites } = useQuery({
+    queryKey: ['websites'],
+    queryFn: () => api.websites.list(),
+  })
 
   return (
     <aside className="w-64 shrink-0 bg-white border-r border-slate-200/80 flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
@@ -44,10 +77,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-xl tracking-tight text-slate-900">GUE</span>
-              <span className="font-bold text-xl text-emerald-600">HR</span>
+              <span className="font-bold text-xl text-emerald-600">Group</span>
             </div>
             <p className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">
-              Contact Hub & Ops
+              Contact Hub & Group Ops
             </p>
           </div>
         </div>
@@ -161,9 +194,131 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
             )}
           </NavLink>
 
-          {/* HR / Super Admin views */}
-          {(role === 'hr' || role === 'super_admin') && (
-            <>
+          <NavLink
+            to="/meetings"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                isActive
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              )
+            }
+          >
+            {({ isActive }) => (
+              <div className="flex items-center gap-3">
+                <CalendarDays className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                <span>Meetings & Events</span>
+              </div>
+            )}
+          </NavLink>
+
+          {canAccessOperations && (
+              <NavLink
+                to="/operations"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                    isActive
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <div className="flex items-center gap-3">
+                    <Briefcase className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                    <span>Group Operations</span>
+                  </div>
+                )}
+              </NavLink>
+          )}
+
+          {canAccessPayroll && (
+              <NavLink
+                to="/operations/payroll"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                    isActive
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <div className="flex items-center gap-3">
+                    <Wallet className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                    <span>Payroll Vouchers</span>
+                  </div>
+                )}
+              </NavLink>
+          )}
+
+          {canAccessPos && (
+            <NavLink
+              to="/pos"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <div className="flex items-center gap-3">
+                  <Store className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                  <span>Point of Sale</span>
+                </div>
+              )}
+            </NavLink>
+          )}
+
+          {canAccessLogistics && (
+            <NavLink
+              to="/logistics"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <div className="flex items-center gap-3">
+                  <Truck className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                  <span>Logistics & Fulfillment</span>
+                </div>
+              )}
+            </NavLink>
+          )}
+
+          {canAccessWebOrders && (
+            <NavLink
+              to="/web-orders"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <div className="flex items-center gap-3">
+                  <ShoppingBag className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                  <span>Web Orders</span>
+                </div>
+              )}
+            </NavLink>
+          )}
+
+          {canAccessStaff && (
               <NavLink
                 to="/staff-management"
                 className={({ isActive }) =>
@@ -187,7 +342,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
                   </div>
                 )}
               </NavLink>
+          )}
 
+          {(currentUser.role === 'hr' || currentUser.role === 'super_admin') && (
+            <NavLink
+              to="/recruitment"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <div className="flex items-center gap-3">
+                  <ClipboardList className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                  <span>Recruitment & Onboarding</span>
+                </div>
+              )}
+            </NavLink>
+          )}
+
+          {canAccessMonitoring && (
               <NavLink
                 to="/monitoring"
                 className={({ isActive }) =>
@@ -211,7 +389,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
                   </div>
                 )}
               </NavLink>
-            </>
           )}
 
           {/* Super Admin only section */}
@@ -273,37 +450,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
           <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
             Company Portals
           </p>
-          <div className="space-y-1">
-            <button
-              onClick={() => navigate('/inbox?website=w2')}
-              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                <span className="truncate">Commerce & Shop</span>
-              </div>
-              <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
-            </button>
-            <button
-              onClick={() => navigate('/inbox?website=w3')}
-              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <span className="h-2 w-2 rounded-full bg-purple-500"></span>
-                <span className="truncate">Careers Portal</span>
-              </div>
-              <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
-            </button>
-            <button
-              onClick={() => navigate('/inbox?website=w4')}
-              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-                <span className="truncate">Developer API</span>
-              </div>
-              <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
-            </button>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {websites?.map((website) => (
+              <button
+                key={website.id}
+                onClick={() => navigate(`/inbox?website=${website.id}`)}
+                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors text-left"
+                title={website.domain}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: website.color || '#10B981' }}
+                  />
+                  <span className="truncate">{website.name}</span>
+                </div>
+                <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -321,7 +485,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
           </div>
           <h4 className="text-xs font-bold text-white mb-1">Public Intake Simulator</h4>
           <p className="text-[11px] text-slate-400 leading-tight mb-3">
-            Simulate a contact form message from any of the 4 websites with X-Site-Key.
+            Simulate a contact form message from any registered website with X-Site-Key.
           </p>
           <button
             onClick={onOpenSimulator}

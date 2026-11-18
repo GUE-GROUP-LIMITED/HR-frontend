@@ -288,7 +288,7 @@ export const ResponseMonitoringPage: React.FC = () => {
           <div>
             <CardTitle className="text-sm font-bold">Live Responses Timeline</CardTitle>
             <CardDescription>
-              Chronological stream of replies sent across all 4 web properties
+              Chronological stream of replies sent across all registered company websites
             </CardDescription>
           </div>
         </CardHeader>

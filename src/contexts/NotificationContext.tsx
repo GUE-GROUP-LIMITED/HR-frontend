@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { NotificationItem } from '@/types'
 import { api } from '@/services/api'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface NotificationContextType {
   notifications: NotificationItem[]
@@ -14,15 +15,16 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const { currentUser } = useAuth()
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const list = await api.notifications.list()
+      const list = await api.notifications.list(currentUser)
       setNotifications(list)
     } catch (err) {
       console.error('Failed to load notifications:', err)
     }
-  }, [])
+  }, [currentUser])
 
   useEffect(() => {
     fetchNotifications()
@@ -31,14 +33,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [fetchNotifications])
 
   const markAsRead = async (id: string) => {
-    await api.notifications.markRead(id)
+    await api.notifications.markRead(id, currentUser)
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     )
   }
 
   const markAllAsRead = async () => {
-    await api.notifications.markAllRead()
+    await api.notifications.markAllRead(currentUser)
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }
 

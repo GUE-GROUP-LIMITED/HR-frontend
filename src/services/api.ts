@@ -11,12 +11,34 @@ import {
   StaffPerformanceSummary,
   DashboardOverviewStats,
 } from '@/types'
+import { StaffMeeting, StaffTerminationRequest } from '@/types/operations'
+import { PayrollPeriod } from '@/types/operations'
+import {
+  CandidateApplication,
+  CreateCandidateApplicationPayload,
+  RecruitmentData,
+} from '@/types/recruitment'
+import {
+  PosDashboardData,
+  PosSale,
+  PosSaleCreatePayload,
+} from '@/types/pos'
+import { LogisticsDashboardData } from '@/types/logistics'
+import { WebOrder, WebOrdersDashboardData } from '@/types/webOrders'
 import {
   ApiResponse,
   MessageFilters,
   StaffFilters,
   MonitoringFilters,
   PublicContactPayload,
+  InternalRequestPayload,
+  ExternalRequestPayload,
+  CreateMeetingPayload,
+  MeetingCreateResult,
+  MeetingResponse,
+  StaffTerminationDecision,
+  StaffTransferPayload,
+  StaffTransferResult,
   CreateStaffPayload,
   UpdateStaffPayload,
   SendResponsePayload,
@@ -47,13 +69,13 @@ apiClient.interceptors.request.use((config) => {
 export const api = {
   // --- Messages ---
   messages: {
-    list: async (filters?: MessageFilters): Promise<ApiResponse<Message[]>> => {
-      if (USE_MOCK) return MockApiService.getMessages(filters)
+    list: async (filters?: MessageFilters, viewer?: User): Promise<ApiResponse<Message[]>> => {
+      if (USE_MOCK) return MockApiService.getMessages(filters, viewer)
       const res = await apiClient.get('/messages', { params: filters })
       return res.data
     },
-    get: async (id: string) => {
-      if (USE_MOCK) return MockApiService.getMessage(id)
+    get: async (id: string, viewer?: User) => {
+      if (USE_MOCK) return MockApiService.getMessage(id, viewer)
       const res = await apiClient.get(`/messages/${id}`)
       return res.data
     },
@@ -91,6 +113,182 @@ export const api = {
       const res = await apiClient.post(`/messages/${messageId}/responses`, payload)
       return res.data
     },
+    createInternalRequest: async (
+      payload: InternalRequestPayload,
+      requester: User
+    ): Promise<{ message_id: string; status: string }> => {
+      if (USE_MOCK) return MockApiService.createInternalRequest(payload, requester)
+      const res = await apiClient.post('/internal-requests', payload)
+      return res.data
+    },
+    createExternalRequest: async (
+      payload: ExternalRequestPayload,
+      requester: User
+    ): Promise<{ message_id: string; status: string }> => {
+      if (USE_MOCK) return MockApiService.createExternalRequest(payload, requester)
+      const res = await apiClient.post('/external-requests', payload)
+      return res.data
+    },
+  },
+
+  meetings: {
+    list: async (viewer: User): Promise<StaffMeeting[]> => {
+      if (USE_MOCK) return MockApiService.getMeetings(viewer)
+      const res = await apiClient.get('/meetings')
+      return res.data.data
+    },
+    create: async (payload: CreateMeetingPayload, organizer: User): Promise<MeetingCreateResult> => {
+      if (USE_MOCK) return MockApiService.createMeeting(payload, organizer)
+      const res = await apiClient.post('/meetings', payload)
+      return res.data
+    },
+    respond: async (
+      meetingId: string,
+      response: MeetingResponse,
+      actor: User
+    ): Promise<StaffMeeting> => {
+      if (USE_MOCK) return MockApiService.respondToMeeting(meetingId, response, actor)
+      const res = await apiClient.patch(`/meetings/${meetingId}/response`, { response })
+      return res.data
+    },
+  },
+
+  payroll: {
+    approveGroup: async (period: PayrollPeriod, actor: User): Promise<PayrollPeriod> => {
+      if (USE_MOCK) return MockApiService.approveGroupPayroll(period, actor)
+      const res = await apiClient.post(`/payroll/periods/${period.id}/group-approval`)
+      return res.data.data
+    },
+  },
+
+  recruitment: {
+    list: async (actor: User): Promise<RecruitmentData> => {
+      if (USE_MOCK) return MockApiService.getRecruitmentData(actor)
+      const res = await apiClient.get('/recruitment')
+      return res.data.data
+    },
+    createApplication: async (
+      payload: CreateCandidateApplicationPayload,
+      actor: User
+    ): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.createCandidateApplication(payload, actor)
+      const res = await apiClient.post('/recruitment/applications', {
+        opening_id: payload.openingId,
+        candidate_name: payload.candidateName,
+        candidate_email: payload.candidateEmail,
+      })
+      return res.data.data
+    },
+    moveToScreening: async (id: string, actor: User): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.moveCandidateToScreening(id, actor)
+      const res = await apiClient.patch(`/recruitment/applications/${id}/screening`)
+      return res.data.data
+    },
+    scheduleInterview: async (
+      id: string,
+      payload: { scheduledAt: string; interviewer: string },
+      actor: User
+    ): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.scheduleCandidateInterview(id, payload, actor)
+      const res = await apiClient.post(`/recruitment/applications/${id}/interviews`, {
+        scheduled_at: payload.scheduledAt,
+        interviewer: payload.interviewer,
+      })
+      return res.data.data
+    },
+    recordInterview: async (
+      id: string,
+      payload: { rating: number; feedback: string },
+      actor: User
+    ): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.recordCandidateInterview(id, payload, actor)
+      const res = await apiClient.patch(`/recruitment/applications/${id}/interviews/evaluation`, payload)
+      return res.data.data
+    },
+    issueOffer: async (id: string, actor: User): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.issueCandidateOffer(id, actor)
+      const res = await apiClient.post(`/recruitment/applications/${id}/offers`)
+      return res.data.data
+    },
+    rejectApplication: async (
+      id: string,
+      reason: string,
+      actor: User
+    ): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.rejectCandidateApplication(id, reason, actor)
+      const res = await apiClient.patch(`/recruitment/applications/${id}/rejection`, { reason })
+      return res.data.data
+    },
+    respondToOffer: async (
+      id: string,
+      response: 'accepted' | 'declined',
+      actor: User
+    ): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.respondToCandidateOffer(id, response, actor)
+      const res = await apiClient.patch(`/recruitment/applications/${id}/offer-response`, { response })
+      return res.data.data
+    },
+    updateOnboardingTask: async (
+      id: string,
+      taskId: string,
+      isComplete: boolean,
+      actor: User
+    ): Promise<CandidateApplication> => {
+      if (USE_MOCK) return MockApiService.updateCandidateOnboardingTask(id, taskId, isComplete, actor)
+      const res = await apiClient.patch(
+        `/recruitment/applications/${id}/onboarding-tasks/${taskId}`,
+        { is_complete: isComplete }
+      )
+      return res.data.data
+    },
+  },
+
+  pos: {
+    dashboard: async (actor: User): Promise<PosDashboardData> => {
+      if (USE_MOCK) return MockApiService.getPosDashboard(actor)
+      const res = await apiClient.get('/pos/dashboard')
+      return res.data.data
+    },
+    createSale: async (
+      payload: PosSaleCreatePayload,
+      actor: User
+    ): Promise<PosSale> => {
+      if (USE_MOCK) return MockApiService.createPosSale(actor, payload)
+      const res = await apiClient.post('/pos/sales', payload)
+      return res.data.data
+    },
+  },
+
+  webOrders: {
+    dashboard: async (actor: User): Promise<WebOrdersDashboardData> => {
+      if (USE_MOCK) return MockApiService.getWebOrdersDashboard(actor)
+      const res = await apiClient.get('/web-orders')
+      return res.data.data
+    },
+  },
+
+  logistics: {
+    dashboard: async (actor: User): Promise<LogisticsDashboardData> => {
+      if (USE_MOCK) return MockApiService.getLogisticsDashboard(actor)
+      const res = await apiClient.get('/logistics/tasks')
+      return res.data.data
+    },
+    fulfillTask: async (
+      taskId: string,
+      actor: User
+    ): Promise<WebOrder> => {
+      if (USE_MOCK) return MockApiService.fulfillLogisticsTask(taskId, actor)
+      const res = await apiClient.post(`/logistics/tasks/${taskId}/fulfillment`)
+      return res.data.data
+    },
+    issueTaskReceipt: async (
+      taskId: string,
+      actor: User
+    ): Promise<{ order: WebOrder; sale: PosSale }> => {
+      if (USE_MOCK) return MockApiService.issueLogisticsTaskReceipt(taskId, actor)
+      const res = await apiClient.post(`/logistics/tasks/${taskId}/receipt`)
+      return res.data.data
+    },
   },
 
   // --- Staff Management & Responder Dashboard ---
@@ -105,14 +303,46 @@ export const api = {
       const res = await apiClient.post('/staff', payload)
       return res.data.data
     },
-    update: async (id: string, payload: UpdateStaffPayload): Promise<User> => {
-      if (USE_MOCK) return MockApiService.updateStaff(id, payload)
+    update: async (id: string, payload: UpdateStaffPayload, actor?: User): Promise<User> => {
+      if (USE_MOCK) return MockApiService.updateStaff(id, payload, actor)
       const res = await apiClient.patch(`/staff/${id}`, payload)
       return res.data.data
     },
-    toggleActive: async (id: string): Promise<User> => {
-      if (USE_MOCK) return MockApiService.toggleStaffActive(id)
-      const res = await apiClient.patch(`/staff/${id}/status`, {})
+    transfer: async (
+      id: string,
+      payload: StaffTransferPayload,
+      actor: User
+    ): Promise<StaffTransferResult> => {
+      if (USE_MOCK) return MockApiService.transferStaff(id, payload, actor)
+      const res = await apiClient.post(`/staff/${id}/transfer`, payload)
+      return res.data
+    },
+    requestTermination: async (id: string, reason: string, actor: User) => {
+      if (USE_MOCK) return MockApiService.requestStaffTermination(id, reason, actor)
+      const res = await apiClient.post(`/staff/${id}/termination-requests`, { reason })
+      return res.data as StaffTerminationRequest
+    },
+    listTerminationRequests: async (viewer: User): Promise<StaffTerminationRequest[]> => {
+      if (USE_MOCK) return MockApiService.getTerminationRequests(viewer)
+      const res = await apiClient.get('/staff-termination-requests')
+      return res.data.data
+    },
+    decideTermination: async (
+      id: string,
+      decision: StaffTerminationDecision,
+      actor: User
+    ): Promise<StaffTerminationRequest> => {
+      if (USE_MOCK) return MockApiService.decideStaffTermination(id, decision, actor)
+      const res = await apiClient.patch(`/staff-termination-requests/${id}/approval`, decision)
+      return res.data
+    },
+    promote: async (
+      id: string,
+      payload: { new_job_title: string; effective_date: string; reason: string },
+      actor: User
+    ): Promise<User> => {
+      if (USE_MOCK) return MockApiService.promoteStaff(id, payload, actor)
+      const res = await apiClient.post(`/staff/${id}/promotions`, payload)
       return res.data.data
     },
     getDashboard: async (staffId: string) => {
@@ -177,7 +407,12 @@ export const api = {
       const res = await apiClient.get('/categories')
       return res.data.data
     },
-    create: async (payload: { name: string; default_assignee_id?: string; description?: string }): Promise<Category> => {
+    create: async (payload: {
+      name: string
+      default_assignee_id?: string
+      description?: string
+      audience?: Category['audience']
+    }): Promise<Category> => {
       if (USE_MOCK) return MockApiService.createCategory(payload)
       const res = await apiClient.post('/categories', payload)
       return res.data.data
@@ -214,18 +449,18 @@ export const api = {
 
   // --- Notifications ---
   notifications: {
-    list: async (): Promise<NotificationItem[]> => {
-      if (USE_MOCK) return MockApiService.getNotifications()
+    list: async (viewer?: User): Promise<NotificationItem[]> => {
+      if (USE_MOCK) return MockApiService.getNotifications(viewer)
       const res = await apiClient.get('/notifications')
       return res.data.data
     },
-    markRead: async (id: string): Promise<boolean> => {
-      if (USE_MOCK) return MockApiService.markNotificationRead(id)
+    markRead: async (id: string, viewer?: User): Promise<boolean> => {
+      if (USE_MOCK) return MockApiService.markNotificationRead(id, viewer)
       await apiClient.patch(`/notifications/${id}/read`)
       return true
     },
-    markAllRead: async (): Promise<boolean> => {
-      if (USE_MOCK) return MockApiService.markAllNotificationsRead()
+    markAllRead: async (viewer?: User): Promise<boolean> => {
+      if (USE_MOCK) return MockApiService.markAllNotificationsRead(viewer)
       await apiClient.post('/notifications/read-all')
       return true
     },
