@@ -13,6 +13,7 @@ import { StaffManagementPage } from '@/pages/StaffManagementPage'
 import { ResponseMonitoringPage } from '@/pages/ResponseMonitoringPage'
 import { AdminWebsitesPage } from '@/pages/AdminWebsitesPage'
 import { AdminCategoriesPage } from '@/pages/AdminCategoriesPage'
+import { AdminUsersPage } from '@/pages/AdminUsersPage'
 import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import { GroupOperationsPage } from '@/pages/GroupOperationsPage'
 import { PayrollPage } from '@/pages/PayrollPage'
@@ -100,6 +101,11 @@ const AppShell: React.FC = () => {
             <Route path="admin/categories" element={
               <AdminPage><AdminCategoriesPage /></AdminPage>
             } />
+            {isBackendMode && (
+              <Route path="admin/users" element={
+                <AdminPage><AdminUsersPage /></AdminPage>
+              } />
+            )}
             <Route path="admin/audit-logs" element={
               <AdminPage><AuditLogsPage /></AdminPage>
             } />

@@ -617,6 +617,19 @@ export const api = {
         ),
       }
     },
+    getPerformance: async (viewer?: User): Promise<StaffPerformanceSummary | undefined> => {
+      if (USE_MOCK_API) {
+        if (!viewer?.id) return undefined
+        const staff = await MockApiService.getMonitoringStaff()
+        return staff.find((item) => item.staff_id === viewer.id)
+      }
+      const res = await apiClient.get('/me/performance')
+      const payload = res.data.data as BackendStaffPerformance | BackendStaffPerformance[]
+      const item = Array.isArray(payload) ? payload[0] : payload
+      if (!item) return undefined
+      const references = await getBackendReferences(viewer)
+      return mapBackendStaffPerformance(item, references.staff)
+    },
   },
 
   // --- Response Monitoring (HR / Super Admin) ---
@@ -646,6 +659,22 @@ export const api = {
       return (res.data.data as BackendStaffPerformance[]).map((item) =>
         mapBackendStaffPerformance(item, staff ?? [])
       )
+    },
+    getStaffDetail: async (staffId: string): Promise<StaffPerformanceSummary> => {
+      if (USE_MOCK_API) {
+        const staff = await MockApiService.getMonitoringStaff()
+        const found = staff.find((item) => item.staff_id === staffId)
+        if (!found) throw new Error('Staff performance not found')
+        return found
+      }
+      const [res, staff] = await Promise.all([
+        apiClient.get(`/monitoring/staff/${staffId}`),
+        safeBackendCall(api.staff.list()),
+      ])
+      const payload = res.data.data as BackendStaffPerformance & {
+        performance?: BackendStaffPerformance
+      }
+      return mapBackendStaffPerformance(payload.performance ?? payload, staff ?? [])
     },
     getResponsesFeed: async (filters?: MonitoringFilters) => {
       if (USE_MOCK_API) return MockApiService.getMonitoringResponses(filters)
@@ -679,6 +708,14 @@ export const api = {
         message: 'Reminder queued for the staff member',
         data: res.data.data,
       }
+    },
+    exportCsv: async (filters?: MonitoringFilters): Promise<Blob> => {
+      if (USE_MOCK_API) throw new Error('Monitoring export is only available in backend mode')
+      const res = await apiClient.get('/monitoring/export', {
+        params: cleanBackendParams({ ...(filters ?? {}) }),
+        responseType: 'blob',
+      })
+      return res.data as Blob
     },
   },
 

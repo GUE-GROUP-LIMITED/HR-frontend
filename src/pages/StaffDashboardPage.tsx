@@ -37,6 +37,11 @@ export const StaffDashboardPage: React.FC = () => {
     queryFn: () => api.staff.getDashboard(currentUser.id),
   })
 
+  const { data: performance } = useQuery({
+    queryKey: ['staff', 'performance', currentUser.id],
+    queryFn: () => api.staff.getPerformance(currentUser),
+  })
+
   const summary = dashboardData?.summary
   const myMessages = dashboardData?.messages || []
   const myResponses = dashboardData?.responses || []
@@ -240,6 +245,41 @@ export const StaffDashboardPage: React.FC = () => {
 
         {/* Right: My Response History (col 4) */}
         <div className="lg:col-span-4 space-y-4">
+          {performance && (
+            <Card className="border-slate-200/80 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900">Performance Snapshot</h3>
+                <Badge variant="info" className="text-[10px]">Backend</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Open</p>
+                  <p className="mt-1 font-black text-amber-600">{performance.open_count}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Replied</p>
+                  <p className="mt-1 font-black text-blue-600">{performance.replied_count}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Resolved</p>
+                  <p className="mt-1 font-black text-emerald-600">{performance.resolved_count}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Overdue</p>
+                  <p className="mt-1 font-black text-rose-600">{performance.overdue_count}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Avg Reply</p>
+                  <p className="mt-1 font-black text-slate-900">{performance.avg_first_response_hours}h</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Satisfaction</p>
+                  <p className="mt-1 font-black text-slate-900">{performance.satisfaction_score}%</p>
+                </div>
+              </div>
+            </Card>
+          )}
+
           <h3 className="text-base font-bold text-slate-900">Recent Replies Sent</h3>
 
           <Card className="border-slate-200/80 p-4 space-y-3">

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Bell,
   Download,
+  Eye,
   Users,
   MessageSquare,
   ShieldAlert,
@@ -15,6 +16,7 @@ import {
   Send,
 } from 'lucide-react'
 import { api } from '@/services/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +27,10 @@ import { MessageResponse } from '@/types'
 
 export const ResponseMonitoringPage: React.FC = () => {
   const queryClient = useQueryClient()
+  const { isBackendMode } = useAuth()
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all')
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailStaffId, setDetailStaffId] = useState<string | null>(null)
   const [reminderModalOpen, setReminderModalOpen] = useState(false)
   const [reminderStaff, setReminderStaff] = useState<{ id: string; name: string; messageId?: string } | null>(null)
   const [reminderNote, setReminderNote] = useState('')
@@ -49,6 +54,12 @@ export const ResponseMonitoringPage: React.FC = () => {
       }),
   })
 
+  const { data: staffDetail, isLoading: isDetailLoading } = useQuery({
+    queryKey: ['monitoring', 'staff-detail', detailStaffId],
+    queryFn: () => api.monitoring.getStaffDetail(detailStaffId!),
+    enabled: Boolean(detailStaffId),
+  })
+
   // Send reminder mutation
   const reminderMutation = useMutation({
     mutationFn: ({ staffId, messageId, note }: { staffId: string; messageId?: string; note?: string }) =>
@@ -62,6 +73,36 @@ export const ResponseMonitoringPage: React.FC = () => {
       }, 1500)
     },
   })
+
+  const exportMutation = useMutation({
+    mutationFn: () =>
+      api.monitoring.exportCsv({
+        staff_id: selectedStaffId === 'all' ? undefined : selectedStaffId,
+      }),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'gue_hr_monitoring_export.csv'
+      link.click()
+      URL.revokeObjectURL(url)
+    },
+    onError: (error) => {
+      alert(error instanceof Error ? error.message : 'Unable to export monitoring report')
+    },
+  })
+
+  const handleOpenDetail = (staffId: string) => {
+    setSelectedStaffId(staffId)
+    setDetailStaffId(staffId)
+    setDetailOpen(true)
+  }
+
+  const handleCloseDetail = () => {
+    setDetailOpen(false)
+    setDetailStaffId(null)
+    setSelectedStaffId('all')
+  }
 
   const handleOpenReminder = (staffId: string, staffName: string, messageId?: string) => {
     setReminderStaff({ id: staffId, name: staffName, messageId })
@@ -105,6 +146,18 @@ export const ResponseMonitoringPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isBackendMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportMutation.mutate()}
+              disabled={exportMutation.isPending}
+              className="flex items-center gap-2 text-xs font-bold bg-white"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>{exportMutation.isPending ? 'Exporting...' : 'Backend CSV'}</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -264,14 +317,25 @@ export const ResponseMonitoringPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-5 text-right whitespace-nowrap">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenReminder(staff.staff_id, staff.staff_name)}
-                          className="h-8 text-xs font-semibold"
-                        >
-                          Send Reminder
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenDetail(staff.staff_id)}
+                            className="h-8 text-xs font-semibold"
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            Details
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenReminder(staff.staff_id, staff.staff_name)}
+                            className="h-8 text-xs font-semibold"
+                          >
+                            Send Reminder
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -320,6 +384,60 @@ export const ResponseMonitoringPage: React.FC = () => {
           ))}
         </CardContent>
       </Card>
+
+      {/* Staff Detail Dialog */}
+      <Dialog
+        open={detailOpen}
+        onClose={handleCloseDetail}
+        title={staffDetail ? `${staffDetail.staff_name} Performance` : 'Staff Performance'}
+        description="Backend monitoring detail for the selected responder."
+        maxWidth="xl"
+      >
+        {isDetailLoading ? (
+          <div className="py-10 flex items-center justify-center">
+            <RefreshCw className="h-6 w-6 text-emerald-600 animate-spin" />
+          </div>
+        ) : staffDetail ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                ['Open', staffDetail.open_count, 'text-amber-600'],
+                ['Replied', staffDetail.replied_count, 'text-blue-600'],
+                ['Resolved', staffDetail.resolved_count, 'text-emerald-600'],
+                ['Overdue', staffDetail.overdue_count, 'text-rose-600'],
+                ['Avg First Response', `${staffDetail.avg_first_response_hours}h`, 'text-slate-900'],
+                ['Satisfaction', `${staffDetail.satisfaction_score}%`, 'text-slate-900'],
+              ].map(([label, value, color]) => (
+                <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                  <p className={`mt-1 text-lg font-black ${color}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-slate-900 mb-2">Recent responses</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {responsesFeed?.data?.length ? (
+                  responsesFeed.data.slice(0, 5).map((response) => (
+                    <div key={response.id} className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-bold text-slate-800">{response.staff_name}</span>
+                        <span className="text-[10px] text-slate-400">{timeAgo(response.created_at)}</span>
+                      </div>
+                      <p className="mt-1 text-slate-600 line-clamp-2">{response.body}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400 py-4 text-center">No recent responses found.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-slate-500">Unable to load staff performance details.</p>
+        )}
+      </Dialog>
 
       {/* Reminder Modal Dialog */}
       <Dialog
