@@ -25,6 +25,7 @@ export const AdminWebsitesPage: React.FC = () => {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [domain, setDomain] = useState('')
+  const [revealedKey, setRevealedKey] = useState<{ websiteId: string; key: string } | null>(null)
 
   const { data: websites, isLoading } = useQuery({
     queryKey: ['websites'],
@@ -34,7 +35,8 @@ export const AdminWebsitesPage: React.FC = () => {
   // Rotate key mutation
   const rotateMutation = useMutation({
     mutationFn: (id: string) => api.websites.rotateKey(id),
-    onSuccess: () => {
+    onSuccess: (website) => {
+      setRevealedKey({ websiteId: website.id, key: website.site_key })
       queryClient.invalidateQueries({ queryKey: ['websites'] })
     },
   })
@@ -42,7 +44,8 @@ export const AdminWebsitesPage: React.FC = () => {
   // Create website mutation
   const createMutation = useMutation({
     mutationFn: () => api.websites.create(name, domain),
-    onSuccess: () => {
+    onSuccess: (website) => {
+      setRevealedKey({ websiteId: website.id, key: website.site_key })
       queryClient.invalidateQueries({ queryKey: ['websites'] })
       setAddModalOpen(false)
       setName('')
@@ -118,12 +121,18 @@ export const AdminWebsitesPage: React.FC = () => {
 
                 <div className="flex items-center justify-between gap-2 bg-white border border-slate-200/80 p-2 rounded-xl">
                   <code className="text-xs font-mono text-slate-800 truncate select-all">
-                    {site.site_key}
+                    {revealedKey?.websiteId === site.id && revealedKey.key
+                      ? revealedKey.key
+                      : site.site_key || '••••••••••••••••••••••••••••••••'}
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(site.site_key, site.id)}
+                    disabled={!(revealedKey?.websiteId === site.id && revealedKey.key) && !site.site_key}
+                    onClick={() => copyToClipboard(
+                      revealedKey?.websiteId === site.id && revealedKey.key ? revealedKey.key : site.site_key,
+                      site.id
+                    )}
                     className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800 shrink-0"
                   >
                     {copiedKey === site.id ? (
@@ -158,6 +167,11 @@ export const AdminWebsitesPage: React.FC = () => {
                   <span>Rotate Key</span>
                 </Button>
               </div>
+              {(revealedKey?.websiteId === site.id || !site.site_key) && (
+                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
+                  Raw site keys are shown only once by the backend. Rotate the key to reveal a new one.
+                </p>
+              )}
             </CardContent>
           </Card>
         ))}

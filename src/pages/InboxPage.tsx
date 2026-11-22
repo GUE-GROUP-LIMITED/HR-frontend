@@ -37,7 +37,7 @@ const requestDestinations = GROUP_ENTITIES.filter((entity) => entity.type !== 'h
 
 export const InboxPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { currentUser } = useAuth()
+  const { currentUser, isBackendMode } = useAuth()
   const queryClient = useQueryClient()
 
   // Filters state
@@ -283,23 +283,27 @@ export const InboxPage: React.FC = () => {
           <Badge variant="outline" className="text-xs px-3 py-1 font-semibold">
             {meta?.total || messages.length} Total Messages
           </Badge>
-          <Button
-            onClick={openInternalRequest}
-            disabled={!internalCategories.length || !staffList?.length}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Internal Request
-          </Button>
-          <Button
-            onClick={openExternalRequest}
-            disabled={!internalCategories.length}
-            variant="outline"
-            className="gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            New External Request
-          </Button>
+          {!isBackendMode && (
+            <>
+              <Button
+                onClick={openInternalRequest}
+                disabled={!internalCategories.length || !staffList?.length}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Internal Request
+              </Button>
+              <Button
+                onClick={openExternalRequest}
+                disabled={!internalCategories.length}
+                variant="outline"
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                New External Request
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -329,8 +333,8 @@ export const InboxPage: React.FC = () => {
             >
               <option value="all">All Sources</option>
               <option value="public">Public Website</option>
-              <option value="internal">Internal Requests</option>
-              <option value="external">External Requests</option>
+              {!isBackendMode && <option value="internal">Internal Requests</option>}
+              {!isBackendMode && <option value="external">External Requests</option>}
             </select>
           </div>
 

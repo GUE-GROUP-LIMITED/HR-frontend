@@ -38,28 +38,31 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
-  const { currentUser, role, logout } = useAuth()
+  const { currentUser, role, logout, isBackendMode } = useAuth()
   const { unreadCount } = useNotifications()
   const navigate = useNavigate()
-  const canAccessPayroll = hasPermission(currentUser, 'view_payroll')
+  const canAccessPayroll = !isBackendMode && hasPermission(currentUser, 'view_payroll')
   const canAccessStaff = hasPermission(currentUser, 'view_staff')
-  const canAccessOperations = hasPermission(currentUser, 'view_operations')
+  const canAccessOperations = !isBackendMode && hasPermission(currentUser, 'view_operations')
   const canAccessMonitoring = hasPermission(currentUser, 'view_monitoring')
   const { data: posDashboard } = useQuery({
     queryKey: ['pos-dashboard', currentUser.id],
     queryFn: () => api.pos.dashboard(currentUser),
+    enabled: !isBackendMode,
   })
-  const canAccessPos = (posDashboard?.outlets.length ?? 0) > 0
+  const canAccessPos = !isBackendMode && (posDashboard?.outlets.length ?? 0) > 0
   const { data: logisticsDashboard } = useQuery({
     queryKey: ['logistics-dashboard', currentUser.id],
     queryFn: () => api.logistics.dashboard(currentUser),
+    enabled: !isBackendMode,
   })
-  const canAccessLogistics = (logisticsDashboard?.outlets.length ?? 0) > 0
+  const canAccessLogistics = !isBackendMode && (logisticsDashboard?.outlets.length ?? 0) > 0
   const { data: webOrdersDashboard } = useQuery({
     queryKey: ['web-orders-dashboard', currentUser.id],
     queryFn: () => api.webOrders.dashboard(currentUser),
+    enabled: !isBackendMode,
   })
-  const canAccessWebOrders = (webOrdersDashboard?.outlets.length ?? 0) > 0
+  const canAccessWebOrders = !isBackendMode && (webOrdersDashboard?.outlets.length ?? 0) > 0
   const { data: websites } = useQuery({
     queryKey: ['websites'],
     queryFn: () => api.websites.list(),
@@ -194,24 +197,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
             )}
           </NavLink>
 
-          <NavLink
-            to="/meetings"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
-                isActive
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              )
-            }
-          >
-            {({ isActive }) => (
-              <div className="flex items-center gap-3">
-                <CalendarDays className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
-                <span>Meetings & Events</span>
-              </div>
-            )}
-          </NavLink>
+          {!isBackendMode && (
+            <NavLink
+              to="/meetings"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group',
+                  isActive
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <div className="flex items-center gap-3">
+                  <CalendarDays className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                  <span>Meetings & Events</span>
+                </div>
+              )}
+            </NavLink>
+          )}
 
           {canAccessOperations && (
               <NavLink
@@ -344,7 +349,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSimulator }) => {
               </NavLink>
           )}
 
-          {(currentUser.role === 'hr' || currentUser.role === 'super_admin') && (
+          {!isBackendMode && (currentUser.role === 'hr' || currentUser.role === 'super_admin') && (
             <NavLink
               to="/recruitment"
               className={({ isActive }) =>

@@ -481,7 +481,7 @@ export const DashboardPage: React.FC = () => {
           <CardContent>
             <ActivityTrendChart
               data={
-                stats?.activity_timeline || [
+                stats?.activity_timeline?.length ? stats.activity_timeline : [
                   { date: 'Nov 01', incoming: 12, resolved: 10 },
                   { date: 'Nov 02', incoming: 19, resolved: 15 },
                   { date: 'Nov 03', incoming: 24, resolved: 21 },
