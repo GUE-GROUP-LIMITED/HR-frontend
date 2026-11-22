@@ -23,7 +23,7 @@ interface TopNavbarProps {
 }
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenSimulator }) => {
-  const { currentUser, role, switchRole, allUsers, switchUser } = useAuth()
+  const { currentUser, role, switchRole, allUsers, switchUser, isBackendMode } = useAuth()
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
   const [showRoleMenu, setShowRoleMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -40,57 +40,66 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenSimulator }) => {
 
       {/* Right controls */}
       <div className="flex items-center gap-3">
-        {/* Active Role Switcher Pill - Allows switching between Super Admin, HR, and Staff */}
-        <div className="relative">
-          <button
-            onClick={() => setShowRoleMenu(!showRoleMenu)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all text-xs font-semibold text-slate-700 shadow-2xs"
-          >
+        {isBackendMode ? (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs">
             <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Role:</span>
+            <span>Signed in as</span>
             <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold uppercase text-[10px]">
               {role.replace('_', ' ')}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-          </button>
+          </div>
+        ) : (
+          <div className="relative">
+            <button
+              onClick={() => setShowRoleMenu(!showRoleMenu)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all text-xs font-semibold text-slate-700 shadow-2xs"
+            >
+              <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Role:</span>
+              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold uppercase text-[10px]">
+                {role.replace('_', ' ')}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            </button>
 
-          {showRoleMenu && (
-            <div className="absolute right-0 mt-2 w-72 max-h-[75vh] overflow-y-auto rounded-2xl bg-white border border-slate-200 shadow-floating p-2 z-50">
-              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Switch Test Persona & Role
-              </p>
-              <div className="space-y-1">
-                {allUsers.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      switchUser(u.id)
-                      setShowRoleMenu(false)
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-left transition-colors ${
-                      currentUser.id === u.id
-                        ? 'bg-emerald-50 text-emerald-900 font-semibold'
-                        : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <Avatar src={u.avatar} fallback={u.name} size="sm" />
-                    <div className="overflow-hidden flex-1">
-                      <p className="truncate font-semibold">{u.name}</p>
-                      <p className="text-[10px] text-slate-500">
-                        {u.job_title || u.role.replace('_', ' ')}
-                      </p>
-                      {u.additional_roles?.map((additionalRole) => (
-                        <p key={additionalRole} className="truncate text-[10px] text-emerald-700">
-                          Additional demo role: {additionalRole}
+            {showRoleMenu && (
+              <div className="absolute right-0 mt-2 w-72 max-h-[75vh] overflow-y-auto rounded-2xl bg-white border border-slate-200 shadow-floating p-2 z-50">
+                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Switch Test Persona & Role
+                </p>
+                <div className="space-y-1">
+                  {allUsers.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        switchUser(u.id)
+                        setShowRoleMenu(false)
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-left transition-colors ${
+                        currentUser.id === u.id
+                          ? 'bg-emerald-50 text-emerald-900 font-semibold'
+                          : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <Avatar src={u.avatar} fallback={u.name} size="sm" />
+                      <div className="overflow-hidden flex-1">
+                        <p className="truncate font-semibold">{u.name}</p>
+                        <p className="text-[10px] text-slate-500">
+                          {u.job_title || u.role.replace('_', ' ')}
                         </p>
-                      ))}
-                    </div>
-                  </button>
-                ))}
+                        {u.additional_roles?.map((additionalRole) => (
+                          <p key={additionalRole} className="truncate text-[10px] text-emerald-700">
+                            Additional demo role: {additionalRole}
+                          </p>
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Date display matching VertexLab style */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200/70 bg-white text-xs font-medium text-slate-600">

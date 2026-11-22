@@ -38,7 +38,7 @@ const STAFF_DEPARTMENTS = Array.from(new Set([
 ])).sort()
 
 export const StaffManagementPage: React.FC = () => {
-  const { currentUser } = useAuth()
+  const { currentUser, isBackendMode } = useAuth()
   const canManageStaff = hasPermission(currentUser, 'manage_staff')
   const canViewMonitoring = hasPermission(currentUser, 'view_monitoring')
   const queryClient = useQueryClient()
@@ -95,10 +95,11 @@ export const StaffManagementPage: React.FC = () => {
   const { data: terminationRequests } = useQuery({
     queryKey: ['staff-termination-requests', currentUser.id],
     queryFn: () => api.staff.listTerminationRequests(currentUser),
+    enabled: !isBackendMode,
   })
 
   const searchText = search.trim().toLowerCase()
-  const workbookStaffList = WORKBOOK_STAFF_DIRECTORY.filter((staff) => {
+  const workbookStaffList = isBackendMode ? [] : WORKBOOK_STAFF_DIRECTORY.filter((staff) => {
     if (!canViewStaffMember(currentUser, staff)) return false
     const matchesDepartment =
       departmentFilter === 'all' || staff.department === departmentFilter
@@ -391,7 +392,7 @@ export const StaffManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {terminationRequests && terminationRequests.length > 0 && (
+      {!isBackendMode && terminationRequests && terminationRequests.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Termination approvals</CardTitle>
@@ -558,7 +559,7 @@ export const StaffManagementPage: React.FC = () => {
                           <Button variant="outline" size="sm" onClick={() => openStaffAction('edit', staff)} className="h-8 gap-1 text-[10px]">
                             <Pencil className="h-3 w-3" /> Edit
                           </Button>
-                          {staff.is_active && (
+                          {staff.is_active && !isBackendMode && (
                             <>
                               <Button variant="outline" size="sm" onClick={() => openStaffAction('transfer', staff)} className="h-8 gap-1 text-[10px]">
                                 <ArrowRightLeft className="h-3 w-3" /> Transfer
@@ -619,16 +620,18 @@ export const StaffManagementPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Job Title / Description
-            </label>
-            <Input
-              placeholder="Demo job title"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-            />
-          </div>
+          {!isBackendMode && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Job Title / Description
+              </label>
+              <Input
+                placeholder="Demo job title"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -734,13 +737,15 @@ export const StaffManagementPage: React.FC = () => {
                     </select>
                   </label>
                 </div>
-                <label className="block text-xs font-semibold text-slate-700">
-                  Job title
-                  <Input value={editValues.job_title || ''} onChange={(event) =>
-                    setEditValues((value) => ({ ...value, job_title: event.target.value }))
-                  } />
-                </label>
-                {(currentUser.role === 'hr' || currentUser.role === 'super_admin') && (
+                {!isBackendMode && (
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Job title
+                    <Input value={editValues.job_title || ''} onChange={(event) =>
+                      setEditValues((value) => ({ ...value, job_title: event.target.value }))
+                    } />
+                  </label>
+                )}
+                {!isBackendMode && (currentUser.role === 'hr' || currentUser.role === 'super_admin') && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="text-xs font-semibold text-slate-700">
                       Date of birth (HR only)

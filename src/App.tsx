@@ -21,6 +21,9 @@ import { RecruitmentPage } from '@/pages/RecruitmentPage'
 import { PosDashboardPage } from '@/pages/PosDashboardPage'
 import { LogisticsPage } from '@/pages/LogisticsPage'
 import { WebOrdersPage } from '@/pages/WebOrdersPage'
+import { LoginPage } from '@/pages/LoginPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { UserPermission } from '@/types'
 import { hasPermission } from '@/lib/access'
 import { useAuth } from '@/contexts/AuthContext'
@@ -47,36 +50,61 @@ const AccessDenied: React.FC = () => (
   </div>
 )
 
-export function App() {
+const AppShell: React.FC = () => {
+  const { isAuthenticated, isBackendMode, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-sm font-semibold text-slate-500">Restoring secure session...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NotificationProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<MainLayout />}>
-                <Route index element={<DashboardPage />} />
-                <Route path="inbox" element={<InboxPage />} />
-                <Route path="staff-dashboard" element={<StaffDashboardPage />} />
-                <Route path="meetings" element={<MeetingsPage />} />
-                <Route path="staff-management" element={
-                  <PermissionPage permission="view_staff"><StaffManagementPage /></PermissionPage>
-                } />
-                <Route path="recruitment" element={
-                  <PermissionPage permission="manage_staff"><RecruitmentPage /></PermissionPage>
-                } />
-                <Route path="monitoring" element={
-                  <PermissionPage permission="view_monitoring"><ResponseMonitoringPage /></PermissionPage>
-                } />
-                <Route path="admin/websites" element={
-                  <AdminPage><AdminWebsitesPage /></AdminPage>
-                } />
-                <Route path="admin/categories" element={
-                  <AdminPage><AdminCategoriesPage /></AdminPage>
-                } />
-                <Route path="admin/audit-logs" element={
-                  <AdminPage><AuditLogsPage /></AdminPage>
-                } />
+    <NotificationProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="inbox" element={<InboxPage />} />
+            <Route path="staff-dashboard" element={<StaffDashboardPage />} />
+            {!isBackendMode && <Route path="meetings" element={<MeetingsPage />} />}
+            <Route path="staff-management" element={
+              <PermissionPage permission="view_staff"><StaffManagementPage /></PermissionPage>
+            } />
+            {!isBackendMode && (
+              <Route path="recruitment" element={
+                <PermissionPage permission="manage_staff"><RecruitmentPage /></PermissionPage>
+              } />
+            )}
+            <Route path="monitoring" element={
+              <PermissionPage permission="view_monitoring"><ResponseMonitoringPage /></PermissionPage>
+            } />
+            <Route path="admin/websites" element={
+              <AdminPage><AdminWebsitesPage /></AdminPage>
+            } />
+            <Route path="admin/categories" element={
+              <AdminPage><AdminCategoriesPage /></AdminPage>
+            } />
+            <Route path="admin/audit-logs" element={
+              <AdminPage><AuditLogsPage /></AdminPage>
+            } />
+            {!isBackendMode && (
+              <>
                 <Route path="operations" element={
                   <PermissionPage permission="view_operations"><GroupOperationsPage /></PermissionPage>
                 } />
@@ -86,11 +114,21 @@ export function App() {
                 <Route path="pos" element={<PosDashboardPage />} />
                 <Route path="web-orders" element={<WebOrdersPage />} />
                 <Route path="logistics" element={<LogisticsPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </NotificationProvider>
+              </>
+            )}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </NotificationProvider>
+  )
+}
+
+export function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppShell />
       </AuthProvider>
     </QueryClientProvider>
   )

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { api } from '@/services/api'
 import { Website, Category } from '@/types'
 import { useNotifications } from '@/contexts/NotificationContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { queryClient } from '@/lib/queryClient'
 import confetti from 'canvas-confetti'
 
@@ -27,7 +28,9 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [successResult, setSuccessResult] = useState<string | null>(null)
+  const [siteKey, setSiteKey] = useState('')
   const { refreshNotifications } = useNotifications()
+  const { isBackendMode } = useAuth()
 
   useEffect(() => {
     if (open) {
@@ -49,6 +52,10 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
   }, [open])
 
   const selectedWebsite = websites.find((w) => w.id === selectedWebsiteId)
+
+  useEffect(() => {
+    setSiteKey(selectedWebsite?.site_key || '')
+  }, [selectedWebsiteId, websites])
 
   // Pre-fill templates for fast testing
   const applyTemplate = (type: 'career' | 'business' | 'tech' | 'billing') => {
@@ -99,7 +106,7 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
         subject,
         message,
         category: selectedCategoryId,
-        website_key: selectedWebsite?.site_key,
+        website_key: siteKey.trim() || selectedWebsite?.site_key,
       })
 
       setSuccessResult(res.message_id)
@@ -154,6 +161,7 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Quick presets */}
+          {!isBackendMode && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -192,6 +200,7 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
               </button>
             </div>
           </div>
+          )}
 
           {/* Website Selection & Site Key */}
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
@@ -226,8 +235,19 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
               <Key className="h-3.5 w-3.5 text-amber-500 shrink-0" />
               <span>Header:</span>
               <code className="bg-slate-200/70 px-2 py-0.5 rounded text-[10px] text-slate-800 truncate">
-                X-Site-Key: {selectedWebsite?.site_key || 'generating...'}
+                X-Site-Key: {siteKey || selectedWebsite?.site_key || 'paste site key...'}
               </code>
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                X-Site-Key value
+              </label>
+              <Input
+                value={siteKey}
+                onChange={(event) => setSiteKey(event.target.value)}
+                placeholder="Paste the website site key shown once at creation"
+                className="font-mono text-xs"
+              />
             </div>
           </div>
 
@@ -317,7 +337,7 @@ export const PublicIntakeModal: React.FC<PublicIntakeModalProps> = ({ open, onCl
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="gap-2">
+            <Button type="submit" disabled={loading || !siteKey.trim()} className="gap-2">
               <Send className="h-4 w-4" />
               <span>{loading ? 'Submitting to /public/contact...' : 'Send Message'}</span>
             </Button>
